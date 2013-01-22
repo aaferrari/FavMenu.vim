@@ -39,6 +39,23 @@
 " TODO:
 "    Are all valid filenames escaped? (Feedback please!)
 let s:cascade_del=exists('fav_cascade_del')
+let texts = {'ES': {'confirmsg1': '¡Esto ya existe en el archivo de favoritos!',
+			\ 'confirmsg2': '¡Este archivo no se encuentra en el archivo de favoritos!',
+			\ 'items': ['Fa&voritos', '&Agregar\ archivo\ actual', 'Elimina&r', 
+			\ 'Elimina&r\ archivo\ actual', '&Editar\ favoritos', 'Actualizar'] },
+			\ 'EN': {'confirmsg1': 'This is already in your favourites file!',
+			\ 'confirmsg2': 'Cannot find this file in your favourites file!',
+			\ 'items': ["Fa&vourites", "&Add\\ current\\ file","&Remove",
+			\ "&Remove\\ current\\ file","&Edit\\ favourites","Re&fresh"]}, 
+			\ 'HU': {'confirmsg1': 'Ez már a kedvenceid fájlt!',
+			\ 'confirmsg2': 'Nem találja ezt a fájlt a kedvenceid fájlt!',
+			\ 'items': ['Ked&vencek', '&Aktuális\ fájl\ hozzáadása', '&Eltávolítás', 
+			\ '&Aktuális\ fájl\ eltávolítása', 'K&edvencek\ rendezése', 'A&ktualizálás'] }}
+
+" If $LANG not in "texts", then use english translation for default
+if !exists("texts['".$LANG."']")
+  let texts[$LANG] = texts["EN"]
+endif
 
 if !exists('$FAVOURITES')
   if has('unix')
@@ -94,9 +111,9 @@ fu! s:AddThisFile(name)
     let item='[&'.s:cnt.']\ \ <DIR><Tab>'.path
   en
   let s:cnt=s:cnt+1
-  exe 'amenu Fa&vourites.'.item." :cal \<C-r>=OpenFile()<CR>('".escape(fullname,'#%')."')<CR>"
+  exe 'amenu '.g:texts[$LANG]['items'][0].".".item." :cal \<C-r>=OpenFile()<CR>('".escape(fullname,'#%')."')<CR>"
   if s:cascade_del
-    exe 'amenu Fa&vourites.&Remove.'.item." :cal <SID>RemoveThisFile('".fullname."')<CR>"
+    exe 'amenu '.g:texts[$LANG]['items'][0].".".g:texts[$LANG]['items'][2].'.'.item." :cal <SID>RemoveThisFile('".fullname."')<CR>"
   en
 endf
 
@@ -105,7 +122,7 @@ fu! s:AddThisFilePermanent(name)
   cal s:AddThisFile(a:name)
   let v=virtcol('.')|vs $FAVOURITES|se nobl bh=delete|0
   if search('^\V'.escape(fullname,'\').'\$','w')
-    cal confirm('This is already in your favourites file!',' :-/ ',1,'W')
+    cal confirm(texts[$LANG]["confirmsg1"],' :-/ ',1,'W')
   el
     exe 'norm Go'.fullname."\<Esc>"
   en
@@ -120,7 +137,7 @@ fu! s:RemoveThisFile(name)
   if search('^\V'.escape(fullname,'\').'\$','w')
     d _
   el
-    cal confirm('Cannot find this file in your favourites file!',' :-/ ',1,'e')
+    cal confirm(texts[$LANG]["confirmsg2"],' :-/ ',1,'e')
   en
   let pm=&pm|let &pm=''|let hid=&hid|se nohid|wq|let &pm=pm|let &hid=hid
   cal FavmenuInit()
@@ -144,15 +161,15 @@ endf
 
 fu! FavmenuInit()
   let s:cnt=1
-  sil! aun Fa&vourites
-  amenu 65.1 Fa&vourites.&Add\ current\ file :cal <SID>AddThisFilePermanent(@%)<CR>
-  amenu 65.3 Fa&vourites.&Edit\ favourites :cal <C-r>=OpenFile()<CR>($FAVOURITES)<CR>:au BufWritePost <C-r>% cal FavmenuInit()<CR>
-  amenu 65.4 Fa&vourites.Re&fresh :cal FavmenuInit()<CR>
-  amenu 65.5 Fa&vourites.-sep-	<nul>
+  exe "sil! aun ".g:texts[$LANG]['items'][0]
+  exe "amenu 65.1 ".g:texts[$LANG]['items'][0].".".g:texts[$LANG]['items'][1]." :cal <SID>AddThisFilePermanent(@%)<CR>"
+  exe "amenu 65.3 ".g:texts[$LANG]['items'][0].".".g:texts[$LANG]['items'][4]." :cal <C-r>=OpenFile()<CR>($FAVOURITES)<CR>:au BufWritePost <C-r>% cal FavmenuInit()<CR>"
+  exe "amenu 65.4 ".g:texts[$LANG]['items'][0].".".g:texts[$LANG]['items'][5]." :cal FavmenuInit()<CR>"
+  exe "amenu 65.5 ".g:texts[$LANG]['items'][0].".-sep-	<nul>"
   if s:cascade_del
-    amenu 65.2 Fa&vourites.&Remove.Dummy <Nop>
+    exe "amenu 65.2 ".g:texts[$LANG]['items'][0].".".g:texts[$LANG]['items'][2].".Dummy <Nop>"
   el
-    amenu 65.2 Fa&vourites.&Remove\ current\ file :cal <SID>RemoveThisFile(@%)<CR>
+    exe "amenu 65.2 ".g:texts[$LANG]['items'][0].".".g:texts[$LANG]['items'][3]." :cal <SID>RemoveThisFile(@%)<CR>"
   en
 
   if filereadable($FAVOURITES)
@@ -161,18 +178,9 @@ fu! FavmenuInit()
     g/\S/cal s:AddThisFile(getline('.'))
     let @/=s
     q
-    sil! aun Fa&vourites.&Remove.Dummy
+    exe "sil! aun ".g:texts[$LANG]['items'][0].".".g:texts[$LANG]['items'][2].".Dummy"
   en
 endf
-
-if $LANG=='hu'
-  menutrans Fa&vourites			Ked&vencek
-  menutrans &Add\ current\ file		&Aktuális\ fájl\ hozzáadása
-  menutrans &Remove			&Eltávolítás
-  menutrans &Remove\ current\ file	&Aktuális\ fájl\ eltávolítása
-  menutrans &Edit\ favourites		K&edvencek\ rendezése
-  menutrans Re&fresh			A&ktualizálás
-en
 
 sil! cal FavmenuInit()
 
